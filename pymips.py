@@ -137,6 +137,14 @@ register_table = {
 }
 
 def translate_reg(register):
+    """Translate a string representing a register into the number for that register
+
+    >>> translate_reg("$zero")
+    0
+
+    >>> translate_reg("$s0")
+    16
+    """
     if register in register_table:
         return register_table[register]
     else:
@@ -148,16 +156,13 @@ def translate_num(number, lower_bound, upper_bound):
     Returns the translated number, and an integer error code
 
     >>> translate_num("1", 0, 10)
-    (1, 0)
-
-    >>> translate_num("10", 0, 1)
-    (0, -1)
+    1
 
     >>> translate_num("0x1", 0, 10)
-    (1, 0)
+    1
 
     >>> translate_num("0xABCD", LONG_MIN, LONG_MAX)
-    (43981, 0)
+    43981
     """
     try:
         value = int(number, 0)
