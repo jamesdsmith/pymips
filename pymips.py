@@ -200,7 +200,7 @@ def write_pass_one(name, args):
             raise incorrect_number_of_parameters(name, len(args), 2)
         return ["bne {0} $0 {1}".format(args[0], args[1])]
     else:
-        return [name + " " + " ".join(args)]
+        return ["{0} {1}".format(name, " ".join(args))]
 
 def write_rtype(output, funct, args, addr, symtbl, reltbl):
     if len(args) != 3:
