@@ -292,9 +292,9 @@ def write_branch(output, opcode, args, addr, symtbl, reltbl):
     rs = translate_reg(args[0])
     rt = translate_reg(args[1])
     label_addr = symtbl.get_addr(args[2])
-    if rs == -1 or rt == -1 or label_addr == -1 or not can_branch_to(addr, label_addr):
+    if rs == -1 or rt == -1 or len(label_addr) > 1 or label_addr == [-1] or not can_branch_to(addr, label_addr[0]):
         return -1
-    offset = (label_addr - addr - 4) >> 2
+    offset = (label_addr[0] - addr - 4) >> 2
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (offset & 0xFFFF)
     write_inst_hex(output, instruction)
     return 0
