@@ -140,7 +140,7 @@ def translate_reg(register):
     if register in register_table:
         return register_table[register]
     else:
-        return -1
+        raise invalid_register_name(register)
 
 def translate_num(number, lower_bound, upper_bound):
     """Translate a string containing a decimal or hex number into a number
@@ -162,11 +162,11 @@ def translate_num(number, lower_bound, upper_bound):
     try:
         value = int(number, 0)
         if value < lower_bound or value > upper_bound:
-            return 0, -1
+            raise translate_num_out_of_range(value, lower_bound, upper_bound)
         else:
-            return value, 0
+            return value
     except:
-        return 0, -1
+        raise translate_num_error(number)
 
 def write_inst_hex(output, instruction):
     output += ["{:08x}".format(instruction)]
@@ -216,7 +216,7 @@ def write_shift(output, funct, args, addr, symtbl, reltbl):
         raise incorrect_number_of_parameters(name_from_opcode(funct), len(args), 3)
     rd = translate_reg(args[0])
     rt = translate_reg(args[1])
-    shamt, err = translate_num(args[2], 0, 31)
+    shamt = translate_num(args[2], 0, 31)
     instruction = (rt << 16) | (rd << 11) | (shamt << 6) | funct;
     write_inst_hex(output, instruction)
 
@@ -232,7 +232,7 @@ def write_addiu(output, opcode, args, addr, symtbl, reltbl):
         raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 3)
     rt = translate_reg(args[0]);
     rs = translate_reg(args[1]);
-    imm, err = translate_num(args[2], INT16_MIN, INT16_MAX);
+    imm = translate_num(args[2], INT16_MIN, INT16_MAX);
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFF)
     write_inst_hex(output, instruction)
 
@@ -241,7 +241,7 @@ def write_ori(output, opcode, args, addr, symtbl, reltbl):
         raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 3)
     rt = translate_reg(args[0])
     rs = translate_reg(args[1])
-    imm, err = translate_num(args[2], 0, UINT16_MAX)
+    imm = translate_num(args[2], 0, UINT16_MAX)
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFF)
     write_inst_hex(output, instruction)
 
@@ -249,7 +249,7 @@ def write_lui(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 2:
         raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 2)
     rt = translate_reg(args[0])
-    imm, err = translate_num(args[1], 0, UINT16_MAX)
+    imm = translate_num(args[1], 0, UINT16_MAX)
     instruction = (opcode << 26) | (rt << 16) | (imm & 0xFFFF)
     write_inst_hex(output, instruction)
 
@@ -258,7 +258,7 @@ def write_mem(output, opcode, args, addr, symtbl, reltbl):
         raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 3)
     rt = translate_reg(args[0])
     rs = translate_reg(args[2])
-    imm, err = translate_num(args[1], INT16_MIN, INT16_MAX)
+    imm = translate_num(args[1], INT16_MIN, INT16_MAX)
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFF)
     write_inst_hex(output, instruction)
 
@@ -274,7 +274,7 @@ def write_branch(output, opcode, args, addr, symtbl, reltbl):
     label_addr = symtbl.get_addr(args[2])
     if not can_branch_to(addr, label_addr):
         raise branch_out_of_range()
-    offset = (label_addr[0] - addr - 4) >> 2
+    offset = (label_addr - addr - 4) >> 2
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (offset & 0xFFFF)
     write_inst_hex(output, instruction)
 
@@ -339,7 +339,7 @@ def translate_inst(output, name, args, addr, symtbl, reltbl):
         raise translate_inst_error(name, args)
 
 def pass_one(lines, symtbl):
-    global errors
+    errors = []
     ret_code = 0
     line_num = 0
     byte_off = 0
@@ -359,15 +359,14 @@ def pass_one(lines, symtbl):
             instructions = write_pass_one(name, args)
             intermediate += instructions
             byte_off += len(instructions) * 4
-        except Exception as e:
+        except AssemblerException as e:
             errors += [(line_num, e)]
             ret_code = -1
-    return intermediate, ret_code
+    return intermediate, errors
 
 def pass_two(lines, symtbl, reltbl):
-    global errors
     output = [".text"]
-    ret_code = 0
+    errors = []
     line_num = 0
     byte_off = 0
     for line in lines:
@@ -376,14 +375,11 @@ def pass_two(lines, symtbl, reltbl):
             name, args = tokenize(line)
             translate_inst(output, name, args, byte_off, symtbl, reltbl)
             byte_off += 4
-        except Exception as e:
+        except AssemblerException as e:
             errors += [(line_num, e)]
-            ret_code = -1
     output += ["", ".symbol"] + symtbl.to_string()
     output += ["", ".relocation"] + reltbl.to_string()
-    return output, ret_code
-
-errors = []
+    return output, errors
 
 def assemble(input_file, int_file, out_file):
     asm = []
@@ -395,13 +391,14 @@ def assemble(input_file, int_file, out_file):
     symtbl = SymbolTable(False)
     reltbl = SymbolTable(True)
     # Pass One
-    intermediate, err_one = pass_one(asm, symtbl)
+    intermediate, errors_one = pass_one(asm, symtbl)
     with open(int_file, 'w') as f:
         for line in intermediate:
             f.write(line + '\n')
     # Pass Two
-    output, err_two = pass_two(intermediate, symtbl, reltbl)
+    output, errors_two = pass_two(intermediate, symtbl, reltbl)
 
+    errors = errors_one + errors_two
     if len(errors) > 0:
         for line_num, e in sorted(errors, key=lambda x: x[0]):
             print("Error: line {0}: {1}".format(line_num, e))
