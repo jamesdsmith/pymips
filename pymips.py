@@ -15,35 +15,35 @@ LONG_MIN = -(2**63)
 class SymbolTable:
     def __init__(self, allow_dupes):
         self.allow_dupes = allow_dupes
-        self.table = {}
+        self.table = []
 
     def add(self, name, addr):
-        if self.allow_dupes:
-            if name not in self.table.keys():
-                self.table[name] = []
-            self.table[name] += [addr]
-            return 0
+        if self.allow_dupes or self.label_count(name) == 0:
+            self.table += [(name, addr)]
         else:
-            if name in self.table.keys():
-                raise duplicate_label_found(name)
-            else:
-                self.table[name] = [addr]
-                return 0
+            raise duplicate_label_found(name)
 
     def get_addr(self, name):
-        if name not in self.table.keys():
+        address = None
+        for label, addr in self.table:
+            if label == name:
+                if address != None:
+                    raise multiple_label_definitions(name)
+                address = addr
+        if address == None:
             raise label_not_found(name)
-        if len(self.table[name]) > 1:
-            raise multiple_label_definitions(name)
-        return self.table[name][0]
+        return address
+
+    def label_count(self, name):
+        count = 0
+        for label, addr in self.table:
+            if label == name:
+                count += 1
+        return count
 
     def to_string(self):
-        pairs = []
-        for k in self.table:
-            for v in self.table[k]:
-                pairs += [(k, v)]
         output = []
-        for k, v in sorted(pairs, key=lambda x: x[1]):
+        for k, v in self.table:
             output += [str(v) + "\t" + k]
         return output
 
