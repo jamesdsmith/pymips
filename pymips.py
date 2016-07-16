@@ -210,7 +210,6 @@ def write_rtype(output, funct, args, addr, symtbl, reltbl):
     rt = translate_reg(args[2])
     instruction = (rs << 21) | (rt << 16) | (rd << 11) | funct;
     write_inst_hex(output, instruction)
-    return 0
 
 def write_shift(output, funct, args, addr, symtbl, reltbl):
     if len(args) != 3:
@@ -220,7 +219,6 @@ def write_shift(output, funct, args, addr, symtbl, reltbl):
     shamt, err = translate_num(args[2], 0, 31)
     instruction = (rt << 16) | (rd << 11) | (shamt << 6) | funct;
     write_inst_hex(output, instruction)
-    return 0
 
 def write_jr(output, funct, args, addr, symtbl, reltbl):
     if len(args) != 1:
@@ -228,7 +226,6 @@ def write_jr(output, funct, args, addr, symtbl, reltbl):
     rs = translate_reg(args[0])
     instruction = (rs << 21) | funct
     write_inst_hex(output, instruction)
-    return 0
 
 def write_addiu(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 3:
@@ -238,7 +235,6 @@ def write_addiu(output, opcode, args, addr, symtbl, reltbl):
     imm, err = translate_num(args[2], INT16_MIN, INT16_MAX);
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFF)
     write_inst_hex(output, instruction)
-    return 0
 
 def write_ori(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 3:
@@ -248,7 +244,6 @@ def write_ori(output, opcode, args, addr, symtbl, reltbl):
     imm, err = translate_num(args[2], 0, UINT16_MAX)
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFF)
     write_inst_hex(output, instruction)
-    return 0
 
 def write_lui(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 2:
@@ -257,7 +252,6 @@ def write_lui(output, opcode, args, addr, symtbl, reltbl):
     imm, err = translate_num(args[1], 0, UINT16_MAX)
     instruction = (opcode << 26) | (rt << 16) | (imm & 0xFFFF)
     write_inst_hex(output, instruction)
-    return 0
 
 def write_mem(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 3:
@@ -267,7 +261,6 @@ def write_mem(output, opcode, args, addr, symtbl, reltbl):
     imm, err = translate_num(args[1], INT16_MIN, INT16_MAX)
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFF)
     write_inst_hex(output, instruction)
-    return 0
 
 def can_branch_to(src_addr, dest_addr):
     diff = dest_addr - src_addr
@@ -284,7 +277,6 @@ def write_branch(output, opcode, args, addr, symtbl, reltbl):
     offset = (label_addr[0] - addr - 4) >> 2
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (offset & 0xFFFF)
     write_inst_hex(output, instruction)
-    return 0
 
 def write_jump(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 1:
@@ -292,7 +284,6 @@ def write_jump(output, opcode, args, addr, symtbl, reltbl):
     reltbl.add(args[0], addr)
     instruction = (opcode << 26)
     write_inst_hex(output, instruction)
-    return 0
 
 def write_arith(output, funct, args, addr, symtbl, reltbl):
     if len(args) != 2:
@@ -301,7 +292,6 @@ def write_arith(output, funct, args, addr, symtbl, reltbl):
     rt = translate_reg(args[1])
     instruction = (rs << 21) | (rt << 16) | funct
     write_inst_hex(output, instruction)
-    return 0
 
 def write_move(output, funct, args, addr, symtbl, reltbl):
     if len(args) != 1:
@@ -309,7 +299,6 @@ def write_move(output, funct, args, addr, symtbl, reltbl):
     rd = translate_reg(args[0])
     instruction = (rd << 11) | funct
     write_inst_hex(output, instruction)
-    return 0
 
 translate_table = {
     "addu": (write_rtype, 0x21),
