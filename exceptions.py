@@ -2,6 +2,10 @@ class duplicate_label_found(Exception):
     def __init__(self, label):
         Exception.__init__(self, 'Label "{0}" already defined'.format(label))
 
+class label_not_found(Exception):
+    def __init__(self, label):
+        Exception.__init__(self, 'Label "{0}" not found'.format(label))
+
 class incorrect_number_of_parameters(Exception):
     def __init__(self, name, found, expected):
         Exception.__init__(self, "Incorecct number of parameters for {0}, found {1} but expected {2}".format(name, found, expected))

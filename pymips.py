@@ -3,6 +3,7 @@ import string
 import random
 import re
 import argparse
+from exceptions import *
 
 TWO_POW_SEVENTEEN = 131072
 UINT16_MAX = 2**16 - 1
@@ -24,15 +25,17 @@ class SymbolTable:
             return 0
         else:
             if name in self.table.keys():
-                return -1
+                raise duplicate_label_found(name)
             else:
                 self.table[name] = [addr]
                 return 0
 
     def get_addr(self, name):
         if name not in self.table.keys():
-            return [-1]
-        return self.table[name]
+            raise label_not_found(name)
+        if len(self.table[name]) > 1:
+            raise multiple_label_definitions(name)
+        return self.table[name][0]
 
     def to_string(self):
         pairs = []
@@ -171,10 +174,8 @@ def write_inst_hex(output, instruction):
 def write_pass_one(name, args):
     if name == "li":
         if len(args) != 2:
-            return []
-        imm, err = translate_num(args[1], LONG_MIN, LONG_MAX)
-        if err == -1:
-            return []
+            raise incorrect_number_of_parameters(name, len(args), 2)
+        imm = translate_num(args[1], LONG_MIN, LONG_MAX)
         if imm <= 0xffff and imm >= -0xffff:
             return ["addiu {0} $0 {1}".format(args[0], imm)]
         else:
@@ -182,102 +183,88 @@ def write_pass_one(name, args):
                     "ori {0} $at {1}".format(args[0], imm & 0xffff)]
     elif name == "move":
         if len(args) != 2:
-            return []
+            raise incorrect_number_of_parameters(name, len(args), 2)
         return ["addu {0} {1} $0".format(args[0], args[1])]
     elif name == "rem":
         if len(args) != 3:
-            return []
+            raise incorrect_number_of_parameters(name, len(args), 3)
         return ["div {0} {1}".format(args[1], args[2]),
                 "mfhi {0}".format(args[0])]
     elif name == "bge":
         if len(args) != 3:
-            return []
+            raise incorrect_number_of_parameters(name, len(args), 3)
         return ["slt $at {0} {1}".format(args[0], args[1]),
                 "beq $at $0 {0}".format(args[2])]
     elif name == "bnez":
         if len(args) != 2:
-            return []
+            raise incorrect_number_of_parameters(name, len(args), 2)
         return ["bne {0} $0 {1}".format(args[0], args[1])]
     else:
         return [name + " " + " ".join(args)]
 
 def write_rtype(output, funct, args, addr, symtbl, reltbl):
     if len(args) != 3:
-        return -1
+        raise incorrect_number_of_parameters(name_from_opcode(funct), len(args), 3)
     rd = translate_reg(args[0])
     rs = translate_reg(args[1])
     rt = translate_reg(args[2])
-    if rd == -1 or rs == -1 or rt == -1:
-        return -1
     instruction = (rs << 21) | (rt << 16) | (rd << 11) | funct;
     write_inst_hex(output, instruction)
     return 0
 
 def write_shift(output, funct, args, addr, symtbl, reltbl):
     if len(args) != 3:
-        return -1
+        raise incorrect_number_of_parameters(name_from_opcode(funct), len(args), 3)
     rd = translate_reg(args[0])
     rt = translate_reg(args[1])
     shamt, err = translate_num(args[2], 0, 31)
-    if rd == -1 or rt == -1 or err == -1:
-        return -1
     instruction = (rt << 16) | (rd << 11) | (shamt << 6) | funct;
     write_inst_hex(output, instruction)
     return 0
 
 def write_jr(output, funct, args, addr, symtbl, reltbl):
     if len(args) != 1:
-        return -1
+        raise incorrect_number_of_parameters(name_from_opcode(funct), len(args), 1)
     rs = translate_reg(args[0])
-    if rs == -1:
-        return -1
     instruction = (rs << 21) | funct
     write_inst_hex(output, instruction)
     return 0
 
 def write_addiu(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 3:
-        return -1
+        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 3)
     rt = translate_reg(args[0]);
     rs = translate_reg(args[1]);
     imm, err = translate_num(args[2], INT16_MIN, INT16_MAX);
-    if rt == -1 or rs == -1 or err != 0:
-        return -1
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFF)
     write_inst_hex(output, instruction)
     return 0
 
 def write_ori(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 3:
-        return -1
+        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 3)
     rt = translate_reg(args[0])
     rs = translate_reg(args[1])
     imm, err = translate_num(args[2], 0, UINT16_MAX)
-    if rt == -1 or rs == -1 or err != 0:
-        return -1
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFF)
     write_inst_hex(output, instruction)
     return 0
 
 def write_lui(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 2:
-        return -1
+        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 2)
     rt = translate_reg(args[0])
     imm, err = translate_num(args[1], 0, UINT16_MAX)
-    if rt == -1 or err != 0:
-        return -1
     instruction = (opcode << 26) | (rt << 16) | (imm & 0xFFFF)
     write_inst_hex(output, instruction)
     return 0
 
 def write_mem(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 3:
-        return -1
+        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 3)
     rt = translate_reg(args[0])
     rs = translate_reg(args[2])
     imm, err = translate_num(args[1], INT16_MIN, INT16_MAX)
-    if rt == -1 or rs == -1 or err != 0:
-        return -1
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFF)
     write_inst_hex(output, instruction)
     return 0
@@ -288,12 +275,12 @@ def can_branch_to(src_addr, dest_addr):
 
 def write_branch(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 3:
-        return -1
+        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 3)
     rs = translate_reg(args[0])
     rt = translate_reg(args[1])
     label_addr = symtbl.get_addr(args[2])
-    if rs == -1 or rt == -1 or len(label_addr) > 1 or label_addr == [-1] or not can_branch_to(addr, label_addr[0]):
-        return -1
+    if not can_branch_to(addr, label_addr):
+        raise branch_out_of_range()
     offset = (label_addr[0] - addr - 4) >> 2
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (offset & 0xFFFF)
     write_inst_hex(output, instruction)
@@ -301,29 +288,25 @@ def write_branch(output, opcode, args, addr, symtbl, reltbl):
 
 def write_jump(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 1:
-        return -1
+        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 1)
     reltbl.add(args[0], addr)
     instruction = (opcode << 26)
     write_inst_hex(output, instruction)
     return 0
 
-def write_arith(funct, opcode, args, addr, symtbl, reltbl):
+def write_arith(output, funct, args, addr, symtbl, reltbl):
     if len(args) != 2:
-        return -1
+        raise incorrect_number_of_parameters(name_from_opcode(funct), len(args), 2)
     rs = translate_reg(args[0])
     rt = translate_reg(args[1])
-    if rs == -1 or rt == -1:
-        return -1
     instruction = (rs << 21) | (rt << 16) | funct
     write_inst_hex(output, instruction)
     return 0
 
-def write_move(funct, opcode, args, addr, symtbl, reltbl):
+def write_move(output, funct, args, addr, symtbl, reltbl):
     if len(args) != 1:
-        return -1
+        raise incorrect_number_of_parameters(name_from_opcode(funct), len(args), 2)
     rd = translate_reg(args[0])
-    if rd == -1:
-        return -1
     instruction = (rd << 11) | funct
     write_inst_hex(output, instruction)
     return 0
@@ -352,13 +335,18 @@ translate_table = {
     "mfhi": (write_move, 0x10),
     "mflo": (write_move, 0x12),
 }
+def name_from_opcode(opcode):
+    for key in translate_table:
+        if translate_table[key][1] == opcode:
+            return key
+    return ""
 
 def translate_inst(output, name, args, addr, symtbl, reltbl):
     if name in translate_table:
         translate_func, funct = translate_table[name]
-        return translate_func(output, funct, args, addr, symtbl, reltbl)
+        translate_func(output, funct, args, addr, symtbl, reltbl)
     else:
-        return -1
+        raise translate_inst_error(name, args)
 
 def pass_one(lines, symtbl):
     ret_code = 0
@@ -366,26 +354,26 @@ def pass_one(lines, symtbl):
     byte_off = 0
     intermediate = []
     for line in lines:
-        line_num += 1
-        name, args = tokenize(line)
-        if name == "":
-            continue
-        if is_label(name):
-            err = symtbl.add(name[:-1], byte_off)
-            if err != 0:
-                print("Found duplicate label: " + name[:-1])
+        try:
+            line_num += 1
+            name, args = tokenize(line)
+            if name == "":
+                continue
+            if is_label(name):
+                err = symtbl.add(name[:-1], byte_off)
+                if len(args) == 0:
+                    continue
+                name = args[0]
+                args = args[1:]
+            instructions = write_pass_one(name, args)
+            if len(instructions) == 0:
+                raise_inst_error(line_num, name, args)
                 ret_code = -1
-                continue
-            if len(args) == 0:
-                continue
-            name = args[0]
-            args = args[1:]
-        instructions = write_pass_one(name, args)
-        if len(instructions) == 0:
-            raise_inst_error(line_num, name, args)
+            intermediate += instructions
+            byte_off += len(instructions) * 4
+        except Exception as e:
+            print(e)
             ret_code = -1
-        intermediate += instructions
-        byte_off += len(instructions) * 4
     return intermediate, ret_code
 
 def pass_two(lines, symtbl, reltbl):
@@ -394,13 +382,14 @@ def pass_two(lines, symtbl, reltbl):
     line_num = 0
     byte_off = 0
     for line in lines:
-        line_num += 1
-        name, args = tokenize(line)
-        err = translate_inst(output, name, args, byte_off, symtbl, reltbl)
-        if err == -1:
-            raise_inst_error(line_num, name, args)
+        try:
+            line_num += 1
+            name, args = tokenize(line)
+            translate_inst(output, name, args, byte_off, symtbl, reltbl)
+            byte_off += 4
+        except Exception as e:
+            print(e)
             ret_code = -1
-        byte_off += 4
     output += ["", ".symbol"] + symtbl.to_string()
     output += ["", ".relocation"] + reltbl.to_string()
     return output, ret_code
