@@ -335,6 +335,7 @@ translate_table = {
     "mfhi": (write_move, 0x10),
     "mflo": (write_move, 0x12),
 }
+
 def name_from_opcode(opcode):
     for key in translate_table:
         if translate_table[key][1] == opcode:
@@ -349,6 +350,7 @@ def translate_inst(output, name, args, addr, symtbl, reltbl):
         raise translate_inst_error(name, args)
 
 def pass_one(lines, symtbl):
+    global errors
     ret_code = 0
     line_num = 0
     byte_off = 0
@@ -366,17 +368,15 @@ def pass_one(lines, symtbl):
                 name = args[0]
                 args = args[1:]
             instructions = write_pass_one(name, args)
-            if len(instructions) == 0:
-                raise_inst_error(line_num, name, args)
-                ret_code = -1
             intermediate += instructions
             byte_off += len(instructions) * 4
         except Exception as e:
-            print(e)
+            errors += [(line_num, e)]
             ret_code = -1
     return intermediate, ret_code
 
 def pass_two(lines, symtbl, reltbl):
+    global errors
     output = [".text"]
     ret_code = 0
     line_num = 0
@@ -388,16 +388,17 @@ def pass_two(lines, symtbl, reltbl):
             translate_inst(output, name, args, byte_off, symtbl, reltbl)
             byte_off += 4
         except Exception as e:
-            print(e)
+            errors += [(line_num, e)]
             ret_code = -1
     output += ["", ".symbol"] + symtbl.to_string()
     output += ["", ".relocation"] + reltbl.to_string()
     return output, ret_code
 
-def main():
-    args = sys.argv[1:]
+errors = []
+
+def assemble(input_file, int_file, out_file):
     asm = []
-    with open(args[0], 'r') as f:
+    with open(input_file, 'r') as f:
         for line in f:
             clean = strip_comments(line).strip()
             if len(clean) > 0:
@@ -406,15 +407,24 @@ def main():
     reltbl = SymbolTable(True)
     # Pass One
     intermediate, err_one = pass_one(asm, symtbl)
-    with open(args[1], 'w') as f:
+    with open(int_file, 'w') as f:
         for line in intermediate:
             f.write(line + '\n')
     # Pass Two
     output, err_two = pass_two(intermediate, symtbl, reltbl)
-    if err_one != 0 or err_two != 0:
+
+    if len(errors) > 0:
+        for line_num, e in sorted(errors, key=lambda x: x[0]):
+            print("Error: line {0}: {1}".format(line_num, e))
         print("One or more errors encountered during assembly operation")
-    with open(args[2], 'w') as f:
+
+    with open(out_file, 'w') as f:
         for line in output:
             f.write(line + '\n')
+
+
+def main():
+    args = sys.argv[1:]
+    assemble(args[0], args[1], args[2])
 
 if __name__ == "__main__": main()
