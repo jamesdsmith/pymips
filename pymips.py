@@ -6,39 +6,92 @@ import argparse
 
 TWO_POW_SEVENTEEN = 131072
 UINT16_MAX = 2**16 - 1
-INT16_MIN = 2**15 - 1
-INT16_MAX = -(2**15)
-LONG_MIN = 2**63 - 1
-LONG_MAX = -(2**63)
+INT16_MAX = 2**15 - 1
+INT16_MIN = -(2**15)
+LONG_MAX = 2**63 - 1
+LONG_MIN = -(2**63)
 
 class SymbolTable:
-    def __init__(self):
+    def __init__(self, allow_dupes):
+        self.allow_dupes = allow_dupes
         self.table = {}
 
     def add(self, name, addr):
-        if name in self.table.keys():
-            return -1
-        else:
-            self.table[name] = addr
+        if self.allow_dupes:
+            if name not in self.table.keys():
+                self.table[name] = []
+            self.table[name] += [addr]
             return 0
+        else:
+            if name in self.table.keys():
+                return -1
+            else:
+                self.table[name] = [addr]
+                return 0
+
+    def get_addr(self, name):
+        if name not in self.table.keys():
+            return [-1]
+        return self.table[name]
 
     def to_string(self):
+        pairs = []
+        for k in self.table:
+            for v in self.table[k]:
+                pairs += [(k, v)]
         output = []
-        for key in self.table:
-            output += [key + ": " + str(self.table[key])]
+        for k, v in sorted(pairs, key=lambda x: x[1]):
+            output += [str(v) + "\t" + k]
         return output
 
 def strip_comments(line):
+    """Removes all text after a # the passed in string
+
+    >>> strip_comments("Test string")
+    'Test string'
+
+    >>> strip_comments("Test #comment")
+    'Test '
+
+    >>> strip_comments("#hashtag")
+    ''
+
+    >>> strip_comments("Test#comment")
+    'Test'
+    """
     if "#" in line:
         return line[:line.find("#")]
     else:
         return line
 
 def tokenize(line):
-    tokens = re.split("[ \f\n\r\t\v,()]+", line)
+    """Split up a line of text on spaces, new lines, tabs, commas, parens
+    returns the first word and the rest of the words
+    
+    >>> tokenize("This,Test")
+    ('This', ['Test'])
+
+    >>> tokenize("word1 word2 word3")
+    ('word1', ['word2', 'word3'])
+
+    >>> tokenize("word1, word2, word3")
+    ('word1', ['word2', 'word3'])
+    """
+    tokens = [x for x in re.split("[ \f\n\r\t\v,()]+", line) if x]
     return tokens[0], tokens[1:]
 
 def is_label(token):
+    """Returns True if this token has a : at the end
+
+    >>> is_label("label:")
+    True
+
+    >>> is_label("label")
+    False
+
+    >>> is_label(":::::")
+    True
+    """
     return token[-1] == ":"
 
 def raise_inst_error(line_num, name, args):
@@ -87,6 +140,22 @@ def translate_reg(register):
         return -1
 
 def translate_num(number, lower_bound, upper_bound):
+    """Translate a string containing a decimal or hex number into a number
+    also makes sure that the number is within the supplied bounds
+    Returns the translated number, and an integer error code
+
+    >>> translate_num("1", 0, 10)
+    (1, 0)
+
+    >>> translate_num("10", 0, 1)
+    (0, -1)
+
+    >>> translate_num("0x1", 0, 10)
+    (1, 0)
+
+    >>> translate_num("0xABCD", LONG_MIN, LONG_MAX)
+    (43981, 0)
+    """
     try:
         value = int(number, 0)
         if value < lower_bound or value > upper_bound:
@@ -222,7 +291,7 @@ def write_branch(output, opcode, args, addr, symtbl, reltbl):
         return -1
     rs = translate_reg(args[0])
     rt = translate_reg(args[1])
-    label_addr = symtbl.table[args[2]]
+    label_addr = symtbl.get_addr(args[2])
     if rs == -1 or rt == -1 or label_addr == -1 or not can_branch_to(addr, label_addr):
         return -1
     offset = (label_addr - addr - 4) >> 2
@@ -316,7 +385,7 @@ def pass_one(lines, symtbl):
             raise_inst_error(line_num, name, args)
             ret_code = -1
         intermediate += instructions
-        byte_off = len(instructions) * 4
+        byte_off += len(instructions) * 4
     return intermediate, ret_code
 
 def pass_two(lines, symtbl, reltbl):
@@ -344,12 +413,14 @@ def main():
             clean = strip_comments(line).strip()
             if len(clean) > 0:
                 asm += [clean.strip()]
-    symtbl = SymbolTable()
-    reltbl = SymbolTable()
+    symtbl = SymbolTable(False)
+    reltbl = SymbolTable(True)
+    # Pass One
     intermediate, err_one = pass_one(asm, symtbl)
     with open(args[1], 'w') as f:
         for line in intermediate:
             f.write(line + '\n')
+    # Pass Two
     output, err_two = pass_two(intermediate, symtbl, reltbl)
     if err_one != 0 or err_two != 0:
         print("One or more errors encountered during assembly operation")
