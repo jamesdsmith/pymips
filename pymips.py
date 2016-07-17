@@ -403,10 +403,15 @@ def assemble(input_file, int_file, out_file):
     # Pass Two
     output, errors_two = pass_two(intermediate, symtbl, reltbl)
 
-    errors = errors_one + errors_two
-    if len(errors) > 0:
-        for line_num, e in sorted(errors, key=lambda x: x[0]):
+    if len(errors_one) > 0:
+        print("Errors during pass one:")
+        for line_num, e in errors_one:
             print("Error: line {0}: {1}".format(line_num, e))
+    if len(errors_two) > 0:
+        print("Errors during pass two:")
+        for line_num, e in errors_two:
+            print("Error: line {0}: {1}".format(line_num, e))
+    if len(errors_one) > 0 or len(errors_two) > 0:
         print("One or more errors encountered during assembly operation")
 
     with open(out_file, 'w') as f:
