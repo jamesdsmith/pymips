@@ -10,6 +10,10 @@ class label_not_found(AssemblerException):
     def __init__(self, label):
         AssemblerException.__init__(self, 'Label "{0}" not found'.format(label))
 
+class address_not_found(AssemblerException):
+    def __init__(self, addr):
+        AssemblerException.__init__(self, 'Could not find a label associated with address "{0}"'.format(addr))
+
 class incorrect_number_of_parameters(AssemblerException):
     def __init__(self, name, found, expected):
         AssemblerException.__init__(self, "Incorecct number of parameters for {0}, found {1} but expected {2}".format(name, found, expected))

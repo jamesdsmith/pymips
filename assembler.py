@@ -1,9 +1,10 @@
+import sys
 import string
 import random
 import re
 import argparse
 from exceptions import *
-from utils import SymbolTable
+from utils import SymbolTable, write_inst_hex
 
 TWO_POW_SEVENTEEN = 131072
 UINT16_MAX = 2**16 - 1
@@ -137,9 +138,6 @@ def translate_num(number, lower_bound, upper_bound):
             return value
     except:
         raise translate_num_error(number)
-
-def write_inst_hex(output, instruction):
-    output += ["{:08x}".format(instruction)]
 
 def write_pass_one(name, args):
     if name == "li":
@@ -383,3 +381,8 @@ def assemble(input_file, int_file, out_file):
         for line in output:
             f.write(line + '\n')
 
+def main():
+    args = sys.argv[1:]
+    assemble(args[0], args[1], args[2])
+
+if __name__ == "__main__": main()

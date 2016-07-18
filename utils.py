@@ -1,4 +1,7 @@
-from exceptions import duplicate_label_found, multiple_label_definitions, label_not_found
+from exceptions import duplicate_label_found, multiple_label_definitions, label_not_found, address_not_found
+
+def write_inst_hex(output, instruction):
+    output += ["{:08x}".format(instruction)]
 
 class SymbolTable:
     def __init__(self, allow_dupes):
@@ -21,6 +24,12 @@ class SymbolTable:
         if address == None:
             raise label_not_found(name)
         return address
+
+    def get_label(self, address):
+        for label, addr in self.table:
+            if addr == address:
+                return label
+        raise address_not_found(address)
 
     def label_count(self, name):
         count = 0
