@@ -36,7 +36,7 @@ def strip_comments(line):
 def tokenize(line):
     """Split up a line of text on spaces, new lines, tabs, commas, parens
     returns the first word and the rest of the words
-    
+
     >>> tokenize("This,Test")
     ('This', ['Test'])
 
