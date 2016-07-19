@@ -55,17 +55,7 @@ def find_text_block(obj_code):
         index += 1
     return start, end
 
-def link(input_files, out_file):
-    # check args?
-    obj_code = []
-    # print(input_files)
-    for input_file in input_files:
-        with open(input_file, 'r') as f:
-            obj_code += [[]]
-            for line in f:
-                if len(line) > 0:
-                    obj_code[-1] += [line.strip()]
-    # print(obj_code)
+def link(obj_code):
     # build symbol/relocation tables
     symtbl = SymbolTable(False)
     reltbls = []
@@ -98,11 +88,19 @@ def link(input_files, out_file):
         print("Errors during linking:")
         for line_num, e in errors:
             print("Error: line {0}: {1}".format(line_num, e))
-    with open(out_file, 'w') as f:
-        for line in output:
-            f.write(line + '\n')
+    return output
 
 def main():
+    # check args?
+    obj_code = []
+    # print(input_files)
+    for input_file in input_files:
+        with open(input_file, 'r') as f:
+            obj_code += [[]]
+            for line in f:
+                if len(line) > 0:
+                    obj_code[-1] += [line.strip()]
+    # print(obj_code)
     args = sys.argv[1:]
     link(args[0:-1], args[-1])
 

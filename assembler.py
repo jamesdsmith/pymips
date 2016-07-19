@@ -349,7 +349,7 @@ def pass_two(lines, symtbl, reltbl):
     output += ["", ".relocation"] + reltbl.to_string()
     return output, errors
 
-def assemble(input_file, int_file, out_file):
+def assemble(input_file):
     asm = []
     with open(input_file, 'r') as f:
         for line in f:
@@ -360,9 +360,9 @@ def assemble(input_file, int_file, out_file):
     reltbl = SymbolTable(True)
     # Pass One
     intermediate, errors_one = pass_one(asm, symtbl)
-    with open(int_file, 'w') as f:
-        for line in intermediate:
-            f.write(line + '\n')
+    # with open(int_file, 'w') as f:
+    #     for line in intermediate:
+    #         f.write(line + '\n')
     # Pass Two
     output, errors_two = pass_two(intermediate, symtbl, reltbl)
 
@@ -376,10 +376,10 @@ def assemble(input_file, int_file, out_file):
             print("Error: line {0}: {1}".format(line_num, e))
     if len(errors_one) > 0 or len(errors_two) > 0:
         print("One or more errors encountered during assembly operation")
-
-    with open(out_file, 'w') as f:
-        for line in output:
-            f.write(line + '\n')
+    # with open(out_file, 'w') as f:
+    #     for line in output:
+    #         f.write(line + '\n')
+    return intermediate, output
 
 def main():
     args = sys.argv[1:]
