@@ -1,6 +1,8 @@
 import sys
+import argparse
 from exceptions import *
 from utils import SymbolTable, write_inst_hex
+import utils
 
 def inst_needs_relocation(instruction):
     return (instruction >> 26) == 2 or (instruction >> 26) == 3
@@ -91,17 +93,15 @@ def link(obj_code):
     return output
 
 def main():
-    # check args?
+    parser = argparse.ArgumentParser(prog="linker", description='Link a MIPS program from multiple object files.')
+    parser.add_argument("files", action="store", nargs="+", type=str, help="list of object files to process")
+    parser.add_argument("-o", action="store", dest="out_name", type=str, default="mips.out", help="override output file name", metavar="file_name")
+    args = parser.parse_args()
+
     obj_code = []
-    # print(input_files)
-    for input_file in input_files:
-        with open(input_file, 'r') as f:
-            obj_code += [[]]
-            for line in f:
-                if len(line) > 0:
-                    obj_code[-1] += [line.strip()]
-    # print(obj_code)
-    args = sys.argv[1:]
-    link(args[0:-1], args[-1])
+    for link_file in args.files:
+        obj_code.append([x.strip() for x in utils.read_file_to_list(link_file)])
+    output = link(obj_code)
+    utils.write_file_from_list(args.out_name, output)
 
 if __name__ == "__main__": main()
