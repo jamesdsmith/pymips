@@ -3,6 +3,7 @@ import argparse
 import assembler
 import linker
 import os
+import utils
 
 def main():
     parser = argparse.ArgumentParser(prog="pymips", description='Assemble and link a MIPS assembly program.')
@@ -15,26 +16,20 @@ def main():
 
     obj_code = []
     for input_file in args.files:
-        ints, outs = assembler.assemble(input_file)
-        obj_code += [outs]
+        ints, objs = assembler.assemble(input_file)
+        obj_code.append(objs)
+        # Might want to change this to remove the path and just get the file name itself
+        file_name = os.path.splitext(input_file)[0]
         if args.int:
-            with open(os.path.splitext(input_file)[0] + ".int", 'w') as f:
-                for line in ints:
-                    f.write(line + '\n')
+            int_file = file_name + ".int"
+            utils.write_file_from_list(int_file, ints)
         if args.obj:
-            with open(os.path.splitext(input_file)[0] + ".o", 'w') as f:
-                for line in outs:
-                    f.write(line + '\n')
-
+            obj_file = file_name + ".o"
+            utils.write_file_from_list(obj_file, objs)
     if args.link != None:
         for link_file in args.link:
-            with open(link_file, 'r') as f:
-                obj_code += [[]]
-                for line in f:
-                    obj_code[-1] += [line.strip()]
+            obj_code.append([x.strip() for x in utils.read_file_to_list(link_file)])
     output = linker.link(obj_code)
-    with open(args.out_name, 'w') as f:
-        for line in output:
-            f.write(line + '\n')
+    utils.write_file_from_list(args.out_name, output)
 
 if __name__ == "__main__": main()

@@ -3,6 +3,19 @@ from exceptions import duplicate_label_found, multiple_label_definitions, label_
 def write_inst_hex(output, instruction):
     output += ["{:08x}".format(instruction)]
 
+def write_file_from_list(filename, string_list):
+    with open(filename, 'w') as f:
+        for line in string_list:
+            f.write(line + '\n')
+    pass
+
+def read_file_to_list(filename):
+    output = []
+    with open(filename, 'r') as f:
+        for line in f:
+            output += [line]
+    return output
+
 class SymbolTable:
     def __init__(self, allow_dupes):
         self.allow_dupes = allow_dupes
