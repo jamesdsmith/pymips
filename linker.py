@@ -92,7 +92,7 @@ def link(obj_code):
     return output
 
 def main():
-    parser = argparse.ArgumentParser(prog="linker", description='Link a MIPS program from multiple object files.')
+    parser = argparse.ArgumentParser(prog="mipsl", description='Link a MIPS program from multiple object files.')
     parser.add_argument("files", action="store", nargs="+", type=str, help="list of object files to process")
     parser.add_argument("-o", action="store", dest="out_name", type=str, default="mips.out", help="override output file name", metavar="file_name")
     args = parser.parse_args()

@@ -4,7 +4,7 @@ import linker
 import utils
 
 def main():
-    parser = argparse.ArgumentParser(prog="pymips", description='Assemble and link a MIPS assembly program.')
+    parser = argparse.ArgumentParser(prog="mipsal", description='Assemble and link a MIPS assembly program.')
     parser.add_argument("files", action="store", nargs="+", type=str, help="list of assembly files to process")
     parser.add_argument("--int", action="store_true", default=False, help="output intermediate files")
     parser.add_argument("--obj", action="store_true", default=False, help="output object files")

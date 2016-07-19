@@ -370,7 +370,7 @@ def assemble(input_file):
     return intermediate, output
 
 def main():
-    parser = argparse.ArgumentParser(prog="assembler", description='Assemble a MIPS assembly program. Outputs an object file for every input file.')
+    parser = argparse.ArgumentParser(prog="mipsa", description='Assemble a MIPS assembly program. Outputs an object file for every input file.')
     parser.add_argument("files", action="store", nargs="+", type=str, help="list of assembly files to process")
     parser.add_argument("--int", action="store_true", default=False, help="output intermediate files")
     args = parser.parse_args()
