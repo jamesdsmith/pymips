@@ -1,5 +1,5 @@
-from exceptions import duplicate_label_found, multiple_label_definitions, label_not_found, address_not_found
 import os
+from exceptions import duplicate_label_found, multiple_label_definitions, label_not_found, address_not_found
 
 def write_inst_hex(output, instruction):
     output += ["{:08x}".format(instruction)]

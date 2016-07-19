@@ -1,4 +1,3 @@
-import sys
 import argparse
 from exceptions import *
 from utils import SymbolTable, write_inst_hex

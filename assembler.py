@@ -1,8 +1,5 @@
-import sys
-import string
-import random
-import re
 import argparse
+import re
 from exceptions import *
 from utils import SymbolTable, write_inst_hex
 import utils
