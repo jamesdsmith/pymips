@@ -5,6 +5,7 @@ import re
 import argparse
 from exceptions import *
 from utils import SymbolTable, write_inst_hex
+import utils
 
 TWO_POW_SEVENTEEN = 131072
 UINT16_MAX = 2**16 - 1
@@ -350,19 +351,12 @@ def pass_two(lines, symtbl, reltbl):
     return output, errors
 
 def assemble(input_file):
-    asm = []
-    with open(input_file, 'r') as f:
-        for line in f:
-            clean = strip_comments(line).strip()
-            if len(clean) > 0:
-                asm += [clean.strip()]
+    cleaned = [strip_comments(line).strip() for line in utils.read_file_to_list(input_file)]
+    asm = [line for line in cleaned if line != ""]
     symtbl = SymbolTable(False)
     reltbl = SymbolTable(True)
     # Pass One
     intermediate, errors_one = pass_one(asm, symtbl)
-    # with open(int_file, 'w') as f:
-    #     for line in intermediate:
-    #         f.write(line + '\n')
     # Pass Two
     output, errors_two = pass_two(intermediate, symtbl, reltbl)
 
@@ -376,9 +370,6 @@ def assemble(input_file):
             print("Error: line {0}: {1}".format(line_num, e))
     if len(errors_one) > 0 or len(errors_two) > 0:
         print("One or more errors encountered during assembly operation")
-    # with open(out_file, 'w') as f:
-    #     for line in output:
-    #         f.write(line + '\n')
     return intermediate, output
 
 def main():
