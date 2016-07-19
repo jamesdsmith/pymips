@@ -165,6 +165,12 @@ def write_pass_one(name, args):
         if len(args) != 2:
             raise incorrect_number_of_parameters(name, len(args), 2)
         return ["bne {0} $0 {1}".format(args[0], args[1])]
+    elif name == "blt":
+        pass
+    elif name == "bgt":
+        pass
+    elif name == "ble":
+        pass
     else:
         return ["{0} {1}".format(name, " ".join(args))]
 
@@ -266,29 +272,85 @@ def write_move(output, funct, args, addr, symtbl, reltbl):
     instruction = (rd << 11) | funct
     write_inst_hex(output, instruction)
 
+def not_yet_impl(*args):
+    raise function_not_implemented()
+
 translate_table = {
-    "addu": (write_rtype, 0x21),
-    "or": (write_rtype, 0x25),
-    "slt": (write_rtype, 0x2a),
-    "sltu": (write_rtype, 0x2b),
-    "sll": (write_shift, 0x00),
-    "jr": (write_jr, 0x08),
+    "j":    (write_jump, 0x02),
+    "jal":  (write_jump, 0x03),
+    "beq":  (write_branch, 0x04),
+    "bne":  (write_branch, 0x05),
+    "blez": (not_yet_impl, 0x06),
+    "bgtz": (not_yet_impl, 0x07),
+    "addi": (not_yet_impl, 0x08),
     "addiu": (write_addiu, 0x09),
-    "ori": (write_ori, 0x0d),
-    "lui": (write_lui, 0x0f),
-    "lb": (write_mem, 0x20),
-    "lbu": (write_mem, 0x24),
-    "lw": (write_mem, 0x23),
-    "sb": (write_mem, 0x28),
-    "sw": (write_mem, 0x2b),
-    "beq": (write_branch, 0x04),
-    "bne": (write_branch, 0x05),
-    "j": (write_jump, 0x02),
-    "jal": (write_jump, 0x03),
-    "mult": (write_arith, 0x18),
-    "div": (write_arith, 0x1a),
+    "slti": (not_yet_impl, 0x0a),
+    "sltiu": (not_yet_impl, 0x0b),
+    "andi": (not_yet_impl, 0x0c),
+    "ori":  (write_ori, 0x0d),
+    "xori": (not_yet_impl, 0x0e),
+    "lui":  (write_lui, 0x0f),
+    "lb":   (write_mem, 0x20),
+    "lh":   (not_yet_impl, 0x21),
+    "lwl":  (not_yet_impl, 0x22),
+    "lw":   (write_mem, 0x23),
+    "lbu":  (write_mem, 0x24),
+    "lhu":  (not_yet_impl, 0x25),
+    "lwr":  (not_yet_impl, 0x26),
+    "sb":   (write_mem, 0x28),
+    "sh":   (not_yet_impl, 0x29),
+    "swl":  (not_yet_impl, 0x2a),
+    "sw":   (write_mem, 0x2b),
+    "swr":  (not_yet_impl, 0x2e),
+    "cache": (not_yet_impl, 0x2f),
+    "ll":   (not_yet_impl, 0x30),
+    "lwc1": (not_yet_impl, 0x31),
+    "lwc2": (not_yet_impl, 0x32),
+    "pref": (not_yet_impl, 0x33),
+    "ldc1": (not_yet_impl, 0x35),
+    "ldc2": (not_yet_impl, 0x36),
+    "sc":   (not_yet_impl, 0x38),
+    "swc1": (not_yet_impl, 0x39),
+    "swc2": (not_yet_impl, 0x3a),
+    "sdc1": (not_yet_impl, 0x3d),
+    "sdc2": (not_yet_impl, 0x3e),
+    "sll":  (write_shift, 0x00),
+    "srl":  (not_yet_impl, 0x02),
+    "sra":  (not_yet_impl, 0x03),
+    "sllv": (not_yet_impl, 0x04),
+    "srlv": (not_yet_impl, 0x06),
+    "srav": (not_yet_impl, 0x07),
+    "jr":   (write_jr, 0x08),
+    "jalr": (not_yet_impl, 0x09),
+    "movz": (not_yet_impl, 0x0a),
+    "movn": (not_yet_impl, 0x0b),
+    "syscall": (not_yet_impl, 0x0c),
+    "break": (not_yet_impl, 0x0d),
+    "sync": (not_yet_impl, 0x0f),
     "mfhi": (write_move, 0x10),
+    "mthi": (not_yet_impl, 0x11),
     "mflo": (write_move, 0x12),
+    "mtlo": (not_yet_impl, 0x13),
+    "mult": (write_arith, 0x18),
+    "multu": (not_yet_impl, 0x19),
+    "div":  (write_arith, 0x1a),
+    "divu": (not_yet_impl, 0x1b),
+    "add":  (not_yet_impl, 0x20),
+    "addu": (write_rtype, 0x21),
+    "sub":  (not_yet_impl, 0x22),
+    "subu": (not_yet_impl, 0x23),
+    "and":  (not_yet_impl, 0x24),
+    "or":   (write_rtype, 0x25),
+    "xor":  (not_yet_impl, 0x26),
+    "nor":  (not_yet_impl, 0x27),
+    "slt":  (write_rtype, 0x2a),
+    "sltu": (write_rtype, 0x2b),
+    "tge":  (not_yet_impl, 0x30),
+    "tgeu": (not_yet_impl, 0x31),
+    "tlt":  (not_yet_impl, 0x32),
+    "tltu": (not_yet_impl, 0x33),
+    "teq":  (not_yet_impl, 0x34),
+    "tne":  (not_yet_impl, 0x36),
 }
 
 def name_from_opcode(opcode):

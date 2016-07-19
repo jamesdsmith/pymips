@@ -2,6 +2,10 @@ class AssemblerException(Exception):
     def __init__(self, msg):
         Exception.__init__(self, msg)
 
+class function_not_implemented(AssemblerException):
+    def __init__(self):
+        AssemblerException.__init__(self, "Function not implemented")
+
 class duplicate_label_found(AssemblerException):
     def __init__(self, label):
         AssemblerException.__init__(self, 'Label "{0}" already defined'.format(label))
