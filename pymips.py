@@ -2,7 +2,6 @@ import sys
 import argparse
 import assembler
 import linker
-import os
 import utils
 
 def main():
@@ -18,8 +17,7 @@ def main():
     for input_file in args.files:
         ints, objs = assembler.assemble(input_file)
         obj_code.append(objs)
-        # Might want to change this to remove the path and just get the file name itself
-        file_name = os.path.splitext(input_file)[0]
+        file_name = utils.get_file_name(input_file)
         if args.int:
             int_file = file_name + ".int"
             utils.write_file_from_list(int_file, ints)

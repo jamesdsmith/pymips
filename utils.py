@@ -1,4 +1,5 @@
 from exceptions import duplicate_label_found, multiple_label_definitions, label_not_found, address_not_found
+import os
 
 def write_inst_hex(output, instruction):
     output += ["{:08x}".format(instruction)]
@@ -15,6 +16,9 @@ def read_file_to_list(filename):
         for line in f:
             output += [line]
     return output
+
+def get_file_name(path):
+    return os.path.splitext(path)[0]
 
 class SymbolTable:
     def __init__(self, allow_dupes):

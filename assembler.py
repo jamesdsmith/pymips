@@ -373,7 +373,18 @@ def assemble(input_file):
     return intermediate, output
 
 def main():
-    args = sys.argv[1:]
-    assemble(args[0], args[1], args[2])
+    parser = argparse.ArgumentParser(prog="assembler", description='Assemble a MIPS assembly program. Outputs an object file for every input file.')
+    parser.add_argument("files", action="store", nargs="+", type=str, help="list of assembly files to process")
+    parser.add_argument("--int", action="store_true", default=False, help="output intermediate files")
+    args = parser.parse_args()
+
+    for input_file in args.files:
+        ints, objs = assemble(input_file)
+        file_name = utils.get_file_name(input_file)
+        if args.int:
+            int_file = file_name + ".int"
+            utils.write_file_from_list(int_file, ints)
+        obj_file = file_name + ".o"
+        utils.write_file_from_list(obj_file, objs)
 
 if __name__ == "__main__": main()
