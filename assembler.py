@@ -16,6 +16,8 @@ RT = 0x0002
 RD = 0x0004
 SHAMT = 0x0008
 IMM = 0x0010
+BRANCH_LABEL = 0x0020
+JUMP_LABEL = 0x0040
 
 def strip_comments(line):
     """Removes all text after a # the passed in string
@@ -188,216 +190,157 @@ def expected_args(code):
         code = code >> 1
     return count
 
-def write_inst(output, opcode, args, addr, symtbl, reltbl, params, code, is_funct, is_mem):
-    if len(args) != expected_args(code):
-        raise incorrect_number_of_parameters(opcode, len(args), expected_args(code))
-    if code & IMM:
-        if code & RT:
-            rt, args = translate_reg(args[0]), args[1:]
-        if is_mem:
-            imm, args = translate_num(args[1], INT16_MIN, INT16_MAX), args[1:]
-            imm, args = 
-        if code & RS:
-            rs, args = translate_reg(args[0]), args[1:]
-        if code & IMM:
-    if code & RS:
-        rs = translate_reg(args[0])
-        args = args[1:]
-    if code & RT:
-        rt = translate_reg(args[0])
-        args = args[1:]
-    if code & RD:
-        rd = translate_reg(args[0])
-        args = args[1:]
-
-def write_rtype(output, funct, args, addr, symtbl, reltbl):
-    if len(args) != 3:
-        raise incorrect_number_of_parameters(name_from_opcode(funct), len(args), 3)
-    rd = translate_reg(args[0])
-    rs = translate_reg(args[1])
-    rt = translate_reg(args[2])
-    instruction = (rs << 21) | (rt << 16) | (rd << 11) | funct;
-    write_inst_hex(output, instruction)
-
-def write_shift(output, funct, args, addr, symtbl, reltbl):
-    if len(args) != 3:
-        raise incorrect_number_of_parameters(name_from_opcode(funct), len(args), 3)
-    rd = translate_reg(args[0])
-    rt = translate_reg(args[1])
-    shamt = translate_num(args[2], 0, 31)
-    instruction = (rt << 16) | (rd << 11) | (shamt << 6) | funct;
-    write_inst_hex(output, instruction)
-
-def write_jr(output, funct, args, addr, symtbl, reltbl):
-    if len(args) != 1:
-        raise incorrect_number_of_parameters(name_from_opcode(funct), len(args), 1)
-    rs = translate_reg(args[0])
-    instruction = (rs << 21) | funct
-    write_inst_hex(output, instruction)
-
-def write_addiu(output, opcode, args, addr, symtbl, reltbl):
-    if len(args) != 3:
-        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 3)
-    rt = translate_reg(args[0]);
-    rs = translate_reg(args[1]);
-    imm = translate_num(args[2], INT16_MIN, INT16_MAX);
-    instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFF)
-    write_inst_hex(output, instruction)
-
-def write_bitwise_imm(output, opcode, args, addr, symtbl, reltbl):
-    if len(args) != 3:
-        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 3)
-    rt = translate_reg(args[0])
-    rs = translate_reg(args[1])
-    imm = translate_num(args[2], 0, UINT16_MAX)
-    instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFF)
-    write_inst_hex(output, instruction)
-
-def write_lui(output, opcode, args, addr, symtbl, reltbl):
-    if len(args) != 2:
-        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 2)
-    rt = translate_reg(args[0])
-    imm = translate_num(args[1], 0, UINT16_MAX)
-    instruction = (opcode << 26) | (rt << 16) | (imm & 0xFFFF)
-    write_inst_hex(output, instruction)
-
-def write_mem(output, opcode, args, addr, symtbl, reltbl):
-    if len(args) != 3:
-        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 3)
-    rt = translate_reg(args[0])
-    rs = translate_reg(args[2])
-    imm = translate_num(args[1], INT16_MIN, INT16_MAX)
-    instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFF)
-    write_inst_hex(output, instruction)
+def write_inst(output, opcode, args, addr, symtbl, reltbl, params, is_funct, imm_min, imm_max):
+    if len(args) != len(params):
+        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), len(params))
+    inst = 0x00000000
+    if is_funct:
+        inst = inst | opcode
+    else:
+        inst = inst | (opcode << 26)
+    while len(params) > 0:
+        param, params = params[0], params[1:]
+        arg, args = args[0], args[1:]
+        if param == RS:
+            inst = inst | (translate_reg(arg) << 21)
+        elif param == RT:
+            inst = inst | (translate_reg(arg) << 16)
+        elif param == RD:
+            inst = inst | (translate_reg(arg) << 11)
+        elif param == SHAMT:
+            inst = inst | (translate_num(arg, 0, 31) << 6)
+        elif param == IMM:
+            inst = inst | (translate_num(arg, imm_min, imm_max) & 0xFFFF)
+        elif param == BRANCH_LABEL:
+            label_addr = symtbl.get_addr(arg)
+            if not can_branch_to(addr, label_addr):
+                raise branch_out_of_range()
+            offset = (label_addr - addr - 4) >> 2
+            inst = inst | (offset & 0xFFFF)
+        elif param == JUMP_LABEL:
+            reltbl.add(arg, addr)
+    write_inst_hex(output, inst)
 
 def can_branch_to(src_addr, dest_addr):
     diff = dest_addr - src_addr
     return (diff >= 0 and diff <= TWO_POW_SEVENTEEN) or (diff < 0 and diff >= -(TWO_POW_SEVENTEEN - 4))
 
-def write_branch(output, opcode, args, addr, symtbl, reltbl):
-    if len(args) != 3:
-        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 3)
-    rs = translate_reg(args[0])
-    rt = translate_reg(args[1])
-    label_addr = symtbl.get_addr(args[2])
-    if not can_branch_to(addr, label_addr):
-        raise branch_out_of_range()
-    offset = (label_addr - addr - 4) >> 2
-    instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (offset & 0xFFFF)
-    write_inst_hex(output, instruction)
-
-def write_branch_on(output, opcode, args, addr, symtbl, reltbl):
-    if len(args) != 2:
-        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 2)
-    rs = translate_reg(args[0])
-    label_addr = symtbl.get_addr(args[1])
-    if not can_branch_to(addr, label_addr):
-        raise branch_out_of_range()
-    offset = (label_addr - addr - 4) >> 2
-    instruction = (opcode << 26) | (rs << 21) | (offset & 0xFFFF)
-    write_inst_hex(output, instruction)
-
-def write_jump(output, opcode, args, addr, symtbl, reltbl):
-    if len(args) != 1:
-        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 1)
-    reltbl.add(args[0], addr)
-    instruction = (opcode << 26)
-    write_inst_hex(output, instruction)
-
-def write_arith(output, funct, args, addr, symtbl, reltbl):
-    if len(args) != 2:
-        raise incorrect_number_of_parameters(name_from_opcode(funct), len(args), 2)
-    rs = translate_reg(args[0])
-    rt = translate_reg(args[1])
-    instruction = (rs << 21) | (rt << 16) | funct
-    write_inst_hex(output, instruction)
-
-def write_move(output, funct, args, addr, symtbl, reltbl):
-    if len(args) != 1:
-        raise incorrect_number_of_parameters(name_from_opcode(funct), len(args), 2)
-    rd = translate_reg(args[0])
-    instruction = (rd << 11) | funct
-    write_inst_hex(output, instruction)
-
-def not_yet_impl(*args):
-    raise function_not_implemented()
-
 translate_table = {
-    "j":    (write_jump, 0x02),
-    "jal":  (write_jump, 0x03),
-    "beq":  (write_branch, 0x04),
-    "bne":  (write_branch, 0x05),
-    "blez": (write_branch_on, 0x06),
-    "bgtz": (write_branch_on, 0x07),
-    "addi": (write_addiu, 0x08),
-    "addiu": (write_addiu, 0x09),
-    "slti": (not_yet_impl, 0x0a),
-    "sltiu": (not_yet_impl, 0x0b),
-    "andi": (write_bitwise_imm, 0x0c),
-    "ori":  (write_bitwise_imm, 0x0d),
-    "xori": (write_bitwise_imm, 0x0e),
-    "lui":  (write_lui, 0x0f),
-    "lb":   (write_mem, 0x20),
-    "lh":   (not_yet_impl, 0x21),
-    "lwl":  (not_yet_impl, 0x22),
-    "lw":   (write_mem, 0x23),
-    "lbu":  (write_mem, 0x24),
-    "lhu":  (not_yet_impl, 0x25),
-    "lwr":  (not_yet_impl, 0x26),
-    "sb":   (write_mem, 0x28),
-    "sh":   (not_yet_impl, 0x29),
-    "swl":  (not_yet_impl, 0x2a),
-    "sw":   (write_mem, 0x2b),
-    "swr":  (not_yet_impl, 0x2e),
-    "cache": (not_yet_impl, 0x2f),
-    "ll":   (not_yet_impl, 0x30),
-    "lwc1": (not_yet_impl, 0x31),
-    "lwc2": (not_yet_impl, 0x32),
-    "pref": (not_yet_impl, 0x33),
-    "ldc1": (not_yet_impl, 0x35),
-    "ldc2": (not_yet_impl, 0x36),
-    "sc":   (not_yet_impl, 0x38),
-    "swc1": (not_yet_impl, 0x39),
-    "swc2": (not_yet_impl, 0x3a),
-    "sdc1": (not_yet_impl, 0x3d),
-    "sdc2": (not_yet_impl, 0x3e),
-    "sll":  (write_shift, 0x00),
-    "srl":  (write_shift, 0x02),
-    "sra":  (write_shift, 0x03),
-    "sllv": (write_rtype, 0x04),
-    "srlv": (write_rtype, 0x06),
-    "srav": (write_rtype, 0x07),
-    "jr":   (write_jr, 0x08),
-    "jalr": (write_jr, 0x09),
-    "movz": (not_yet_impl, 0x0a),
-    "movn": (not_yet_impl, 0x0b),
-    "syscall": (not_yet_impl, 0x0c),
-    "break": (not_yet_impl, 0x0d),
-    "sync": (not_yet_impl, 0x0f),
-    "mfhi": (write_move, 0x10),
-    "mthi": (not_yet_impl, 0x11),
-    "mflo": (write_move, 0x12),
-    "mtlo": (not_yet_impl, 0x13),
-    "mult": (write_arith, 0x18),
-    "multu": (not_yet_impl, 0x19),
-    "div":  (write_arith, 0x1a),
-    "divu": (not_yet_impl, 0x1b),
-    "add":  (not_yet_impl, 0x20),
-    "addu": (write_rtype, 0x21),
-    "sub":  (not_yet_impl, 0x22),
-    "subu": (not_yet_impl, 0x23),
-    "and":  (not_yet_impl, 0x24),
-    "or":   (write_rtype, 0x25),
-    "xor":  (not_yet_impl, 0x26),
-    "nor":  (not_yet_impl, 0x27),
-    "slt":  (write_rtype, 0x2a),
-    "sltu": (write_rtype, 0x2b),
-    "tge":  (not_yet_impl, 0x30),
-    "tgeu": (not_yet_impl, 0x31),
-    "tlt":  (not_yet_impl, 0x32),
-    "tltu": (not_yet_impl, 0x33),
-    "teq":  (not_yet_impl, 0x34),
-    "tne":  (not_yet_impl, 0x36),
+    "j":       (0x02, [JUMP_LABEL], 0, 0),
+    "jal":     (0x03, [JUMP_LABEL], 0, 0),
+    "beq":     (0x04, [RS, RT, BRANCH_LABEL], 0, 0),
+    "bne":     (0x05, [RS, RT, BRANCH_LABEL], 0, 0),
+    "blez":    (0x06),
+    "bgtz":    (0x07),
+    "addi":    (0x08),
+    "addiu":   (0x09, [RT, RS, IMM], INT16_MIN, INT16_MAX),
+    "slti":    (0x0a),
+    "sltiu":   (0x0b),
+    "andi":    (0x0c),
+    "ori":     (0x0d, [RT, RS, IMM], 0, UINT16_MAX),
+    "xori":    (0x0e),
+    "lui":     (0x0f, [RT, IMM], 0, UINT16_MAX),
+    "lb":      (0x20, [RT, IMM, RS], INT16_MIN, INT16_MAX),
+    "lh":      (0x21),
+    "lwl":     (0x22),
+    "lw":      (0x23, [RT, IMM, RS], INT16_MIN, INT16_MAX),
+    "lbu":     (0x24, [RT, IMM, RS], INT16_MIN, INT16_MAX),
+    "lhu":     (0x25),
+    "lwr":     (0x26),
+    "sb":      (0x28, [RT, IMM, RS], INT16_MIN, INT16_MAX),
+    "sh":      (0x29),
+    "swl":     (0x2a),
+    "sw":      (0x2b, [RT, IMM, RS], INT16_MIN, INT16_MAX),
+    "swr":     (0x2e),
+    "cache":   (0x2f),
+    "ll":      (0x30),
+    "lwc1":    (0x31),
+    "lwc2":    (0x32),
+    "pref":    (0x33),
+    "ldc1":    (0x35),
+    "ldc2":    (0x36),
+    "sc":      (0x38),
+    "swc1":    (0x39),
+    "swc2":    (0x3a),
+    "sdc1":    (0x3d),
+    "sdc2":    (0x3e),
+    "sll":     (0x00, [RD, RT, SHAMT], 0, 0),
+    "srl":     (0x02),
+    "sra":     (0x03),
+    "sllv":    (0x04),
+    "srlv":    (0x06),
+    "srav":    (0x07),
+    "jr":      (0x08, [RS], 0, 0),
+    "jalr":    (0x09),
+    "movz":    (0x0a),
+    "movn":    (0x0b),
+    "syscall": (0x0c),
+    "break":   (0x0d),
+    "sync":    (0x0f),
+    "mfhi":    (0x10),
+    "mthi":    (0x11),
+    "mflo":    (0x12),
+    "mtlo":    (0x13),
+    "mult":    (0x18),
+    "multu":   (0x19),
+    "div":     (0x1a),
+    "divu":    (0x1b),
+    "add":     (0x20),
+    "addu":    (0x21, [RD, RS, RT], 0, 0),
+    "sub":     (0x22),
+    "subu":    (0x23),
+    "and":     (0x24),
+    "or":      (0x25, [RD, RS, RT], 0, 0),
+    "xor":     (0x26),
+    "nor":     (0x27),
+    "slt":     (0x2a, [RD, RS, RT], 0, 0),
+    "sltu":    (0x2b, [RD, RS, RT], 0, 0),
+    "tge":     (0x30),
+    "tgeu":    (0x31),
+    "tlt":     (0x32),
+    "tltu":    (0x33),
+    "teq":     (0x34),
+    "tne":     (0x36),
+}
+
+rtype = {
+    "sll",
+    "srl",
+    "sra",
+    "sllv",
+    "srlv",
+    "srav",
+    "jr",
+    "jalr",
+    "movz",
+    "movn",
+    "syscall",
+    "break",
+    "sync",
+    "mfhi",
+    "mthi",
+    "mflo",
+    "mtlo",
+    "mult",
+    "multu",
+    "div",
+    "divu",
+    "add",
+    "addu",
+    "sub",
+    "subu",
+    "and",
+    "or",
+    "xor",
+    "nor",
+    "slt",
+    "sltu",
+    "tge",
+    "tgeu",
+    "tlt",
+    "tltu",
+    "teq",
+    "tne"
 }
 
 def name_from_opcode(opcode):
@@ -408,8 +351,9 @@ def name_from_opcode(opcode):
 
 def translate_inst(output, name, args, addr, symtbl, reltbl):
     if name in translate_table:
-        translate_func, funct = translate_table[name]
-        translate_func(output, funct, args, addr, symtbl, reltbl)
+        opcode, params, imm_min, imm_max = translate_table[name]
+        imm = IMM in params
+        write_inst(output, opcode, args, addr, symtbl, reltbl, params, name in rtype, imm_min if imm else 0, imm_max if imm else 0)
     else:
         raise translate_inst_error(name, args)
 
