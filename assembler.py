@@ -11,6 +11,12 @@ INT16_MIN = -(2**15)
 LONG_MAX = 2**63 - 1
 LONG_MIN = -(2**63)
 
+RS = 0x0001
+RT = 0x0002
+RD = 0x0004
+SHAMT = 0x0008
+IMM = 0x0010
+
 def strip_comments(line):
     """Removes all text after a # the passed in string
 
@@ -173,6 +179,36 @@ def write_pass_one(name, args):
         pass
     else:
         return ["{0} {1}".format(name, " ".join(args))]
+
+def expected_args(code):
+    count = 0
+    while code > 0:
+        if code & 1:
+            count += 1
+        code = code >> 1
+    return count
+
+def write_inst(output, opcode, args, addr, symtbl, reltbl, params, code, is_funct, is_mem):
+    if len(args) != expected_args(code):
+        raise incorrect_number_of_parameters(opcode, len(args), expected_args(code))
+    if code & IMM:
+        if code & RT:
+            rt, args = translate_reg(args[0]), args[1:]
+        if is_mem:
+            imm, args = translate_num(args[1], INT16_MIN, INT16_MAX), args[1:]
+            imm, args = 
+        if code & RS:
+            rs, args = translate_reg(args[0]), args[1:]
+        if code & IMM:
+    if code & RS:
+        rs = translate_reg(args[0])
+        args = args[1:]
+    if code & RT:
+        rt = translate_reg(args[0])
+        args = args[1:]
+    if code & RD:
+        rd = translate_reg(args[0])
+        args = args[1:]
 
 def write_rtype(output, funct, args, addr, symtbl, reltbl):
     if len(args) != 3:
