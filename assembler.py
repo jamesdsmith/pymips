@@ -208,7 +208,7 @@ def write_addiu(output, opcode, args, addr, symtbl, reltbl):
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (imm & 0xFFFF)
     write_inst_hex(output, instruction)
 
-def write_ori(output, opcode, args, addr, symtbl, reltbl):
+def write_bitwise_imm(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 3:
         raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 3)
     rt = translate_reg(args[0])
@@ -250,6 +250,17 @@ def write_branch(output, opcode, args, addr, symtbl, reltbl):
     instruction = (opcode << 26) | (rs << 21) | (rt << 16) | (offset & 0xFFFF)
     write_inst_hex(output, instruction)
 
+def write_branch_on(output, opcode, args, addr, symtbl, reltbl):
+    if len(args) != 2:
+        raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 2)
+    rs = translate_reg(args[0])
+    label_addr = symtbl.get_addr(args[1])
+    if not can_branch_to(addr, label_addr):
+        raise branch_out_of_range()
+    offset = (label_addr - addr - 4) >> 2
+    instruction = (opcode << 26) | (rs << 21) | (offset & 0xFFFF)
+    write_inst_hex(output, instruction)
+
 def write_jump(output, opcode, args, addr, symtbl, reltbl):
     if len(args) != 1:
         raise incorrect_number_of_parameters(name_from_opcode(opcode), len(args), 1)
@@ -280,15 +291,15 @@ translate_table = {
     "jal":  (write_jump, 0x03),
     "beq":  (write_branch, 0x04),
     "bne":  (write_branch, 0x05),
-    "blez": (not_yet_impl, 0x06),
-    "bgtz": (not_yet_impl, 0x07),
-    "addi": (not_yet_impl, 0x08),
+    "blez": (write_branch_on, 0x06),
+    "bgtz": (write_branch_on, 0x07),
+    "addi": (write_addiu, 0x08),
     "addiu": (write_addiu, 0x09),
     "slti": (not_yet_impl, 0x0a),
     "sltiu": (not_yet_impl, 0x0b),
-    "andi": (not_yet_impl, 0x0c),
-    "ori":  (write_ori, 0x0d),
-    "xori": (not_yet_impl, 0x0e),
+    "andi": (write_bitwise_imm, 0x0c),
+    "ori":  (write_bitwise_imm, 0x0d),
+    "xori": (write_bitwise_imm, 0x0e),
     "lui":  (write_lui, 0x0f),
     "lb":   (write_mem, 0x20),
     "lh":   (not_yet_impl, 0x21),
@@ -315,13 +326,13 @@ translate_table = {
     "sdc1": (not_yet_impl, 0x3d),
     "sdc2": (not_yet_impl, 0x3e),
     "sll":  (write_shift, 0x00),
-    "srl":  (not_yet_impl, 0x02),
-    "sra":  (not_yet_impl, 0x03),
-    "sllv": (not_yet_impl, 0x04),
-    "srlv": (not_yet_impl, 0x06),
-    "srav": (not_yet_impl, 0x07),
+    "srl":  (write_shift, 0x02),
+    "sra":  (write_shift, 0x03),
+    "sllv": (write_rtype, 0x04),
+    "srlv": (write_rtype, 0x06),
+    "srav": (write_rtype, 0x07),
     "jr":   (write_jr, 0x08),
-    "jalr": (not_yet_impl, 0x09),
+    "jalr": (write_jr, 0x09),
     "movz": (not_yet_impl, 0x0a),
     "movn": (not_yet_impl, 0x0b),
     "syscall": (not_yet_impl, 0x0c),
