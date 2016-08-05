@@ -312,7 +312,7 @@ translate_table.update(jtype)
 
 def name_from_opcode(opcode):
     for key in translate_table:
-        if translate_table[key][1] == opcode:
+        if translate_table[key][0] == opcode:
             return key
     return ""
 
