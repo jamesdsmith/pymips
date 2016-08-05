@@ -225,33 +225,32 @@ def can_branch_to(src_addr, dest_addr):
     diff = dest_addr - src_addr
     return (diff >= 0 and diff <= TWO_POW_SEVENTEEN) or (diff < 0 and diff >= -(TWO_POW_SEVENTEEN - 4))
 
-translate_table = {
-    "j":       (0x02, [JUMP_LABEL], 0, 0),
-    "jal":     (0x03, [JUMP_LABEL], 0, 0),
+jtype = {
+    "j":       (0x02, [JUMP_LABEL]),
+    "jal":     (0x03, [JUMP_LABEL]),
+}
+
+itype = {
     "beq":     (0x04, [RS, RT, BRANCH_LABEL], 0, 0),
     "bne":     (0x05, [RS, RT, BRANCH_LABEL], 0, 0),
-    "blez":    (0x06),
-    "bgtz":    (0x07),
-    "addi":    (0x08),
+    "blez":    (0x06, [RS, BRANCH_LABEL], 0, 0),
+    "bgtz":    (0x07, [RS, BRANCH_LABEL], 0, 0),
+    "addi":    (0x08, [RT, RS, IMM], INT16_MIN, INT16_MAX),
     "addiu":   (0x09, [RT, RS, IMM], INT16_MIN, INT16_MAX),
-    "slti":    (0x0a),
-    "sltiu":   (0x0b),
-    "andi":    (0x0c),
+    "slti":    (0x0a, [RT, RS, IMM], INT16_MIN, INT16_MAX),
+    "sltiu":   (0x0b, [RT, RS, IMM], 0, UINT16_MAX),
+    "andi":    (0x0c, [RT, RS, IMM], 0, UINT16_MAX),
     "ori":     (0x0d, [RT, RS, IMM], 0, UINT16_MAX),
-    "xori":    (0x0e),
+    "xori":    (0x0e, [RT, RS, IMM], 0, UINT16_MAX),
     "lui":     (0x0f, [RT, IMM], 0, UINT16_MAX),
     "lb":      (0x20, [RT, IMM, RS], INT16_MIN, INT16_MAX),
-    "lh":      (0x21),
-    "lwl":     (0x22),
+    "lh":      (0x21, [RT, IMM, RS], INT16_MIN, INT16_MAX),
     "lw":      (0x23, [RT, IMM, RS], INT16_MIN, INT16_MAX),
     "lbu":     (0x24, [RT, IMM, RS], INT16_MIN, INT16_MAX),
-    "lhu":     (0x25),
-    "lwr":     (0x26),
+    "lhu":     (0x25, [RT, IMM, RS], INT16_MIN, INT16_MAX),
     "sb":      (0x28, [RT, IMM, RS], INT16_MIN, INT16_MAX),
-    "sh":      (0x29),
-    "swl":     (0x2a),
+    "sh":      (0x29, [RT, IMM, RS], INT16_MIN, INT16_MAX),
     "sw":      (0x2b, [RT, IMM, RS], INT16_MIN, INT16_MAX),
-    "swr":     (0x2e),
     "cache":   (0x2f),
     "ll":      (0x30),
     "lwc1":    (0x31),
@@ -264,17 +263,20 @@ translate_table = {
     "swc2":    (0x3a),
     "sdc1":    (0x3d),
     "sdc2":    (0x3e),
-    "sll":     (0x00, [RD, RT, SHAMT], 0, 0),
+}
+
+rtype = {
+    "sll":     (0x00, [RD, RT, SHAMT]),
     "srl":     (0x02),
     "sra":     (0x03),
     "sllv":    (0x04),
     "srlv":    (0x06),
     "srav":    (0x07),
-    "jr":      (0x08, [RS], 0, 0),
+    "jr":      (0x08, [RS]),
     "jalr":    (0x09),
     "movz":    (0x0a),
     "movn":    (0x0b),
-    "syscall": (0x0c),
+    "syscall": (0x0c, []),
     "break":   (0x0d),
     "sync":    (0x0f),
     "mfhi":    (0x10),
@@ -286,15 +288,15 @@ translate_table = {
     "div":     (0x1a),
     "divu":    (0x1b),
     "add":     (0x20),
-    "addu":    (0x21, [RD, RS, RT], 0, 0),
+    "addu":    (0x21, [RD, RS, RT]),
     "sub":     (0x22),
     "subu":    (0x23),
     "and":     (0x24),
-    "or":      (0x25, [RD, RS, RT], 0, 0),
+    "or":      (0x25, [RD, RS, RT]),
     "xor":     (0x26),
     "nor":     (0x27),
-    "slt":     (0x2a, [RD, RS, RT], 0, 0),
-    "sltu":    (0x2b, [RD, RS, RT], 0, 0),
+    "slt":     (0x2a, [RD, RS, RT]),
+    "sltu":    (0x2b, [RD, RS, RT]),
     "tge":     (0x30),
     "tgeu":    (0x31),
     "tlt":     (0x32),
@@ -303,45 +305,11 @@ translate_table = {
     "tne":     (0x36),
 }
 
-rtype = {
-    "sll",
-    "srl",
-    "sra",
-    "sllv",
-    "srlv",
-    "srav",
-    "jr",
-    "jalr",
-    "movz",
-    "movn",
-    "syscall",
-    "break",
-    "sync",
-    "mfhi",
-    "mthi",
-    "mflo",
-    "mtlo",
-    "mult",
-    "multu",
-    "div",
-    "divu",
-    "add",
-    "addu",
-    "sub",
-    "subu",
-    "and",
-    "or",
-    "xor",
-    "nor",
-    "slt",
-    "sltu",
-    "tge",
-    "tgeu",
-    "tlt",
-    "tltu",
-    "teq",
-    "tne"
-}
+# translate_table = rtype + itype + jtype
+translate_table = {}
+translate_table.update(rtype.copy())
+translate_table.update(itype.copy())
+translate_table.update(jtype.copy())
 
 def name_from_opcode(opcode):
     for key in translate_table:
@@ -351,7 +319,11 @@ def name_from_opcode(opcode):
 
 def translate_inst(output, name, args, addr, symtbl, reltbl):
     if name in translate_table:
-        opcode, params, imm_min, imm_max = translate_table[name]
+        entry = translate_table[name]
+        opcode = entry[0]
+        params = entry[1]
+        if name in itype:
+            _, _, imm_min, imm_max = itype[name]
         imm = IMM in params
         write_inst(output, opcode, args, addr, symtbl, reltbl, params, name in rtype, imm_min if imm else 0, imm_max if imm else 0)
     else:
