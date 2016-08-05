@@ -267,49 +267,48 @@ itype = {
 
 rtype = {
     "sll":     (0x00, [RD, RT, SHAMT]),
-    "srl":     (0x02),
-    "sra":     (0x03),
-    "sllv":    (0x04),
-    "srlv":    (0x06),
-    "srav":    (0x07),
+    "srl":     (0x02, [RD, RT, SHAMT]),
+    "sra":     (0x03, [RD, RT, SHAMT]),
+    "sllv":    (0x04, [RD, RT, RS]),
+    "srlv":    (0x06, [RD, RT, RS]),
+    "srav":    (0x07, [RD, RT, RS]),
     "jr":      (0x08, [RS]),
-    "jalr":    (0x09),
-    "movz":    (0x0a),
-    "movn":    (0x0b),
+    "jalr":    (0x09, [RS]),
+    "movz":    (0x0a, [RD, RS, RT]),
+    "movn":    (0x0b, [RD, RS, RT]),
     "syscall": (0x0c, []),
-    "break":   (0x0d),
-    "sync":    (0x0f),
-    "mfhi":    (0x10),
-    "mthi":    (0x11),
-    "mflo":    (0x12),
-    "mtlo":    (0x13),
-    "mult":    (0x18),
-    "multu":   (0x19),
-    "div":     (0x1a),
-    "divu":    (0x1b),
-    "add":     (0x20),
+    "break":   (0x0d, []),
+    "sync":    (0x0f, []),
+    "mfhi":    (0x10, [RD]),
+    "mthi":    (0x11, [RS]),
+    "mflo":    (0x12, [RD]),
+    "mtlo":    (0x13, [RS]),
+    "mult":    (0x18, [RS, RT]),
+    "multu":   (0x19, [RS, RT]),
+    "div":     (0x1a, [RS, RT]),
+    "divu":    (0x1b, [RS, RT]),
+    "add":     (0x20, [RD, RS, RT]),
     "addu":    (0x21, [RD, RS, RT]),
-    "sub":     (0x22),
-    "subu":    (0x23),
-    "and":     (0x24),
+    "sub":     (0x22, [RD, RS, RT]),
+    "subu":    (0x23, [RD, RS, RT]),
+    "and":     (0x24, [RD, RS, RT]),
     "or":      (0x25, [RD, RS, RT]),
-    "xor":     (0x26),
-    "nor":     (0x27),
+    "xor":     (0x26, [RD, RS, RT]),
+    "nor":     (0x27, [RD, RS, RT]),
     "slt":     (0x2a, [RD, RS, RT]),
     "sltu":    (0x2b, [RD, RS, RT]),
-    "tge":     (0x30),
-    "tgeu":    (0x31),
-    "tlt":     (0x32),
-    "tltu":    (0x33),
-    "teq":     (0x34),
-    "tne":     (0x36),
+    "tge":     (0x30, [RS, RT]),
+    "tgeu":    (0x31, [RS, RT]),
+    "tlt":     (0x32, [RS, RT]),
+    "tltu":    (0x33, [RS, RT]),
+    "teq":     (0x34, [RS, RT]),
+    "tne":     (0x36, [RS, RT]),
 }
 
-# translate_table = rtype + itype + jtype
 translate_table = {}
-translate_table.update(rtype.copy())
-translate_table.update(itype.copy())
-translate_table.update(jtype.copy())
+translate_table.update(rtype)
+translate_table.update(itype)
+translate_table.update(jtype)
 
 def name_from_opcode(opcode):
     for key in translate_table:
